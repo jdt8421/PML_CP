@@ -1,0 +1,85 @@
+---
+title: "Predicting Movement"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Background and Introduction
+
+Background and Introduction
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it.
+
+In this project, we will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participant They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. The five ways are exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E). Only Class A corresponds to correct performance. The goal of this project is to predict the manner in which they did the exercise, i.e., Class A to E. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+
+
+### Data Acquistion and Setup
+
+The purpose of this section is provide the code used to load the data into R, clean the data, and partition the data. The training and test data are loaded into R. The training data are split into a training-train and training-test sets. The purpose of this process is to create a data set that can be used for evaluating the model and estimating out of sample error rates. The data are cleaned to remove any columns with missing data. 
+
+```{r, cache = TRUE}
+train.link = "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+test.link = "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+
+training = read.csv(url(train.link), na.strings=c("NA","#DIV/0!","")) #Excel errors are not recognized as NaN
+testing = read.csv(url(test.link), na.strings=c("NA","#DIV/0!","")) #Excel errors are not recognized as NaN
+```
+
+Loading the R packages required. Note that echo = FALSE so this doesn't print to the report to prevent unncessary information from the R packages from being displayed. 
+
+```{r, cache=TRUE, echo = FALSE}
+library(caret); library(rattle); library(rpart); library(rpart.plot)
+library(randomForest); library(repmis); library(ElemStatLearn); library(gbm); library(MASS);
+```
+
+Setting up the initial data partitions.
+
+```{r, cache = TRUE}
+set.seed(1)
+
+## missing values are deleleted. 
+training = training[, colSums(is.na(training)) == 0]
+testing = testing[, colSums(is.na(testing)) == 0]
+
+training.split =createDataPartition(training$classe, p = .7, list = FALSE)
+training.train = training[training.split,]
+training.test = training[-training.split,]
+```
+
+### Model Fitting
+
+The model fitting is done with (1) rpartand (2) random forest. The results of each is compared and the best model then used to predict the outcome for the testing dataset. 
+
+```{r, cache = TRUE, message=FALSE}
+
+mod_rpart = train(classe ~ ., data = training.train, method = "rpart")
+mod_rf = train(classe ~ ., data = training.train, method = "rf")
+
+pred_rpart = predict(mod_rpart, training.test)
+pred_rf = predict(mod_rf, training.test)
+```
+
+
+```{r, cache = TRUE}
+## accuracy of the rpart
+confusionMatrix(pred_rpart, training.test$classe)
+```
+
+
+```{r, cache=TRUE}
+## accuracy using linear discriminant analysis
+confusionMatrix(pred_rf, training.test$classe)
+```
+
+
+### Applying the best model to the test dataset:
+
+The random forest model is clearly superior and is used to generate predictions for the testing set. The results are then printed to the file. 
+
+```{r, message=FALSE}
+pred_rf_test = predict(mod_rf, testing)
+pred_rf_test
+```
